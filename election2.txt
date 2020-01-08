@@ -1,4 +1,4 @@
-0http://vote2016.cec.gov.tw/zh_TW/P1/n000000000000000.html
+http://vote2016.cec.gov.tw/zh_TW/P1/n000000000000000.html
 http://vote2016.cec.gov.tw/zh_TW/P1/n712000000000000.html
 http://vote2016.cec.gov.tw/zh_TW/P1/n100000000000000.html
 http://vote2016.cec.gov.tw/zh_TW/P1/n200000000000000.html
