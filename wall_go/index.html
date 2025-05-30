@@ -105,6 +105,9 @@
         <button onclick="placeWall('left')">左</button>
         <button onclick="placeWall('right')">右</button>
     </div>
+    <div class="no_move" id="noMove" style="margin-top: 10px; display: none">
+        <button onClick="noMove()">不移動</button>
+    </div>
     <div id="scoreBoard" style="margin-top: 10px; font-weight: bold;"></div>
     <div style="margin-top: 10px;">
         <button onclick="restartGame()">重新開始</button>
@@ -134,9 +137,22 @@
             return `${x},${y}`;
         }
 
+        function getNormalizedWallKey(x, y, dir) {
+            const dx = { left: -1, right: 1, top: 0, bottom: 0 }[dir];
+            const dy = { left: 0, right: 0, top: -1, bottom: 1 }[dir];
+            const x2 = x + dx;
+            const y2 = y + dy;
+            const k1 = key(x, y);
+            const k2 = key(x2, y2);
+
+            // 比較 k1 和 k2，用字典順序較小的放前面
+            return k1 < k2 ? `${k1}-${k2}` : `${k2}-${k1}`;
+        }
+
+
         function addWall(x, y, dir) {
             const k = key(x, y);
-            const uniqueWallKey = `${k}-${dir}`;
+            const uniqueWallKey = getNormalizedWallKey(x, y, dir);
             if (wallPlacedPositions.has(uniqueWallKey)) {
                 alert("這裡已經放過牆壁了！");
                 return false;
@@ -194,6 +210,7 @@
                         lastMoved = [x, y];
                         renderBoard();
                         document.getElementById("directionButtons").style.display = "block";
+                        document.getElementById("noMove").style.display = "none";
                     }
                 }
             });
@@ -226,6 +243,7 @@
                     if (
                         nx >= 0 && nx < size && ny >= 0 && ny < size &&
                         !hasWall(x, y, dir) &&
+                        (!pieces.player1.concat(pieces.player2).some(([px, py]) => px === nx && py === ny)) &&
                         !visited.has(nk)
                     ) {
                         visited.add(nk);
@@ -236,40 +254,6 @@
 
             return false;
         }
-
-
-        /*function renderBoard() {
-            board.innerHTML = "";
-            for (let y = 0; y < size; y++) {
-                for (let x = 0; x < size; x++) {
-                    const cell = createCell(x, y);
-
-                    [...pieces.player1, ...pieces.player2].forEach(([px, py], index) => {
-                        if (px === x && py === y) {
-                            const piece = document.createElement("div");
-                            const isPlayer1 = index < pieces.player1.length;
-                            piece.className = `piece ${isPlayer1 ? "player1" : "player2"}`;
-                            if (selectedPiece && selectedPiece[0] === x && selectedPiece[1] === y) {
-                                piece.classList.add("selected");
-                            }
-                            piece.addEventListener("click", (e) => {
-                                e.stopPropagation();
-                                const owner = isPlayer1 ? 1 : 2;
-                                if (owner === currentPlayer && !lastMoved) {
-                                    selectedPiece = [x, y];
-                                    renderBoard();
-                                }
-                            });
-                            cell.appendChild(piece);
-                        }
-                    });
-
-                    board.appendChild(cell);
-                }
-            }
-            currentPlayerDisplay.textContent = `目前玩家：玩家 ${currentPlayer}（${currentPlayer === 1 ? '紅' : '藍'}）`;
-            return updateScores();
-        }*/
 
         function renderBoard() {
             board.innerHTML = "";
@@ -289,16 +273,17 @@
                                 e.stopPropagation();
                                 const owner = 1;
                                 if (owner === currentPlayer && !lastMoved) {
+                                    document.getElementById("noMove").style.display = "block";
                                     selectedPiece = [x, y];
                                     renderBoard();
                                 }
                             });
-                            if (!placingInitial) piece.onclick = () => {
-                                if (currentPlayer === 1) {
-                                    selectedPiece = [x, y];
-                                    renderBoard();
-                                }
-                            };
+                            // if (!placingInitial) piece.onclick = () => {
+                            //     if (currentPlayer === 1) {
+                            //         selectedPiece = [x, y];
+                            //         renderBoard();
+                            //     }
+                            // };
                             cell.appendChild(piece);
                         }
                     }
@@ -314,16 +299,17 @@
                                 e.stopPropagation();
                                 const owner = 2;
                                 if (owner === currentPlayer && !lastMoved) {
+                                    document.getElementById("noMove").style.display = "block";
                                     selectedPiece = [x, y];
                                     renderBoard();
                                 }
                             });
-                            if (!placingInitial) piece.onclick = () => {
-                                if (currentPlayer === 2) {
-                                    selectedPiece = [x, y];
-                                    renderBoard();
-                                }
-                            };
+                            // if (!placingInitial) piece.onclick = () => {
+                            //     if (currentPlayer === 2) {
+                            //         selectedPiece = [x, y];
+                            //         renderBoard();
+                            //     }
+                            // };
                             cell.appendChild(piece);
                         }
                     }
@@ -412,19 +398,30 @@
         }
 
         function restartGame() {
-            pieces.player1 = [];
-            pieces.player2 = [];
+            pieces.player1 = [[1, 1], [5, 5]];
+            pieces.player2 = [[5, 1], [1, 5]];
             initialPlacingIndex = 0;
-            currentPlayer = initialPlacement[0].player;
+            currentPlayer = 1;
             placingInitial = true;
+            initialPlaceStep = 0;
             selectedPiece = null;
             lastMoved = null;
             wallPlacedPositions.clear();
             for (const key in walls) delete walls[key];
             renderBoard();
-            currentPlayerDisplay.textContent = "目前玩家：玩家 1（紅）";
             scoreBoard.textContent = "";
             document.getElementById("directionButtons").style.display = "none";
+            document.getElementById("noMove").style.display = "none";
+        }
+
+        function noMove() {
+            const [x, y] = selectedPiece;
+            movePiece(x, y, x, y);
+            selectedPiece = null;
+            lastMoved = [x, y];
+            renderBoard();
+            document.getElementById("directionButtons").style.display = "block";
+            document.getElementById("noMove").style.display = "none";
         }
 
         window.placeWall = function (dir) {
@@ -433,6 +430,7 @@
             const placed = addWall(x, y, dir);
             if (!placed) return;
             document.getElementById("directionButtons").style.display = "none";
+            document.getElementById("noMove").style.display = "none";
             lastMoved = null;
             currentPlayer = currentPlayer === 1 ? 2 : 1;
             const [player1_score, player2_score] = renderBoard();
