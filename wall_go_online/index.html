@@ -673,10 +673,10 @@
             const visited = new Set();
             const groups = [];
 
-            if (placingInitial) return;
+            // if (placingInitial) return;
 
 
-            /*for (const [x, y] of [...pieces.player1]) {
+            for (const [x, y] of [...pieces.player1]) {
                 const k = key(x, y);
                 const groupVisited = new Set();
                 floodFill(x, y, groupVisited);
@@ -692,7 +692,7 @@
                 if (pieces.player1.some(([px, py]) => groupVisited.has(key(px, py)))) {
                     return;
                 }
-            }*/
+            }
 
             gameStart = false;
             if (myPlayer === 1) deleteDatabase();
