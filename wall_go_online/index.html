@@ -153,6 +153,7 @@
             update,
             remove
         } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-database.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-auth.js";
         // TODO: Add SDKs for Firebase products that you want to use
         // https://firebase.google.com/docs/web/setup#available-libraries
 
@@ -169,7 +170,16 @@
 
         // Initialize Firebase
         const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
         const db = getDatabase(app);
+
+        signInAnonymously(auth)
+            .then(() => {
+                console.log("登入成功，UID:", auth.currentUser.uid);
+            })
+            .catch((error) => {
+                console.error("匿名登入失敗", error);
+            });
 
         const board = document.getElementById("board");
         const currentPlayerDisplay = document.getElementById("currentPlayerDisplay");
@@ -208,6 +218,7 @@
         }
 
         async function createRoom() {
+            const uid = auth.currentUser.uid;
             roomCode = generateRoomCode();
             const roomRef = ref(db, `rooms/${roomCode}`);
             const snapshot = await get(roomRef);
@@ -218,7 +229,11 @@
             }
 
             await set(roomRef, {
-                player1: "joined"
+                host: uid,
+                player1: "joined",
+                players: {
+                    [uid]: true
+                }
             });
 
             console.log("房間建立成功，房號為：", roomCode);
@@ -227,6 +242,7 @@
 
 
         async function joinRoom() {
+            const uid = auth.currentUser.uid;
             const roomRef = ref(db, `rooms/${roomCode}`);
             const snapshot = await get(roomRef);
 
@@ -238,7 +254,12 @@
             const data = snapshot.val();
 
             if (!data.player2) {
-                await update(roomRef, { player2: "joined" });
+                await update(roomRef, {
+                    player2: "joined",
+                    players: {
+                        [uid]: true
+                    }
+                });
                 console.log("加入房間成功，為 player2");
                 myPlayer = 2;
                 return true;
@@ -280,7 +301,7 @@
         function deleteDatabase() {
             const roomRef = ref(db, `rooms/${roomCode}`);
 
-            set(roomRef, { player1: "leave" });
+            remove(roomRef);
         }
 
         window.handleCreateRoom = async () => {
@@ -324,14 +345,14 @@
             })
         }
 
-        async function updateServer() {
-            if (currentPlayer == myPlayer) {
-                await updateGameState();
-                // currentPlayer = (currentPlayer === 1) ? 2 : 1;
-                updateServer();
-            } else {
-                listenToGame();
-            }
+        function updateServer() {
+            // if (currentPlayer == myPlayer) {
+            //     updateGameState();
+            // } else {
+            //     listenToGame();
+            // }
+            updateGameState();
+            listenToGame();
         }
 
 
@@ -646,38 +667,16 @@
             return [areaScores.player1, areaScores.player2];
         }
 
-        /*function checkGameOver(player1_score, player2_score) {
-            const allPieces = [...pieces.player1, ...pieces.player2];
-            const visited = new Set();
-            const groups = [];
-
-            for (const [px, py] of allPieces) {
-                const k = key(px, py);
-                if (!visited.has(k)) {
-                    const groupVisited = new Set();
-                    floodFill(px, py, groupVisited);
-                    groups.push([...groupVisited].filter(pos => allPieces.some(([gx, gy]) => key(gx, gy) === pos)));
-                    groupVisited.forEach(pos => visited.add(pos));
-                }
-            }
-
-            const totalPieces = allPieces.length;
-            const totalGroupedPieces = groups.reduce((acc, g) => acc + g.length, 0);
-
-            if (groups.length === totalPieces && totalGroupedPieces === totalPieces) {
-                gameStart = false;
-                if (player1_score > player2_score) alert("遊戲結束！紅色獲勝。");
-                else if (player2_score > player1_score) alert("遊戲結束！藍色獲勝。");
-                else alert("遊戲結束！雙方平手。");
-            }
-        }*/
 
         function checkGameOver(player1_score, player2_score) {
             const allPieces = [...pieces.player1, ...pieces.player2];
             const visited = new Set();
             const groups = [];
 
-            for (const [x, y] of [...pieces.player1]) {
+            if (placingInitial) return;
+
+
+            /*for (const [x, y] of [...pieces.player1]) {
                 const k = key(x, y);
                 const groupVisited = new Set();
                 floodFill(x, y, groupVisited);
@@ -693,7 +692,7 @@
                 if (pieces.player1.some(([px, py]) => groupVisited.has(key(px, py)))) {
                     return;
                 }
-            }
+            }*/
 
             gameStart = false;
             if (myPlayer === 1) deleteDatabase();
@@ -707,7 +706,6 @@
         window.restartGame = function () {
             pieces.player1 = [[1, 1], [5, 5]];
             pieces.player2 = [[5, 1], [1, 5]];
-            initialPlacingIndex = 0;
             currentPlayer = 1;
             placingInitial = true;
             initialPlaceStep = 0;
@@ -715,6 +713,7 @@
             lastMoved = null;
             gameStart = false;
             wallPlacedPositions.clear();
+            roomCode = "";
             for (const key in walls) delete walls[key];
             renderBoard();
             scoreBoard.textContent = "";
