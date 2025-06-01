@@ -3,6 +3,7 @@
 
 <head>
     <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>牆壁圍棋</title>
     <style>
         body {
@@ -118,6 +119,27 @@
     <div style="margin-top: 10px;">
         <button onclick="restartGame()">重新開始</button>
     </div>
+    <div id="rule" style="margin-top: 20px;">
+        <h3>遊戲規則</h3>
+        <h4>1. 放置棋子：</h4>
+        <p>
+            遊戲開始時玩家需要依序放置棋子，總共需要放置兩輪<br>
+            第一輪由玩家1 (紅色) 開始放置一顆，再換玩家2 (藍色) 放置<br>
+            第二輪由玩家2 (藍色) 先放再換玩家1 (紅色)
+        </p>
+        <h4>2. 移動棋子</h4>
+        <p>
+            玩家可選擇一顆自己的棋子移動0~2步<br>
+            移動完後可在移動後的格子上、下、左、右其中一個方向建立牆壁<br>
+            棋子不可穿越其他棋子或牆壁移動
+        </p>
+        <h4>3. 獲勝條件</h4>
+        <p>
+            當兩位玩家被區隔在獨立的領土時，遊戲結束<br>
+            玩家所佔領的方格數即為分數，分數高的玩家獲勝
+        </p>
+
+    </div>
     <script type="module">
         // Import the functions you need from the SDKs you need
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
@@ -128,7 +150,8 @@
             onValue,
             off,
             get,
-            update
+            update,
+            remove
         } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-database.js";
         // TODO: Add SDKs for Firebase products that you want to use
         // https://firebase.google.com/docs/web/setup#available-libraries
@@ -233,7 +256,7 @@
                 if (state && state.currentPlayer != myPlayer) {
                     off(stateRef);
                     // 呼叫你的畫面更新邏輯
-                    console.log(`接收到的state: `, JSON.stringify(state, null, 2));
+                    // console.log(`接收到的state: `, JSON.stringify(state, null, 2));
                     updateGameStateToLocal(state);
                     renderBoard();
                 }
@@ -248,9 +271,16 @@
                 currentPlayer: currentPlayer,
                 initialPlaceStep: initialPlaceStep
             };
-            console.log(`更新狀態`, JSON.stringify(newState, null, 2));
+            // console.log(`更新狀態`, JSON.stringify(newState, null, 2));
             const stateRef = ref(db, "rooms/" + roomCode + "/state");
+
             set(stateRef, newState);  // 傳送整個新的遊戲狀態
+        }
+
+        function deleteDatabase() {
+            const roomRef = ref(db, `rooms/${roomCode}`);
+
+            set(roomRef, { player1: "leave" });
         }
 
         window.handleCreateRoom = async () => {
@@ -561,7 +591,7 @@
                     else currentPlayerDisplay.textContent = "正在等待對手移動棋子並放置牆壁";
                 }
             } else {
-                currentPlayerDisplay.textContent = "請創建房間或加入房間";
+                currentPlayerDisplay.textContent = "請建立或加入房間";
             }
 
             return updateScores();
@@ -616,7 +646,7 @@
             return [areaScores.player1, areaScores.player2];
         }
 
-        function checkGameOver(player1_score, player2_score) {
+        /*function checkGameOver(player1_score, player2_score) {
             const allPieces = [...pieces.player1, ...pieces.player2];
             const visited = new Set();
             const groups = [];
@@ -640,7 +670,39 @@
                 else if (player2_score > player1_score) alert("遊戲結束！藍色獲勝。");
                 else alert("遊戲結束！雙方平手。");
             }
+        }*/
+
+        function checkGameOver(player1_score, player2_score) {
+            const allPieces = [...pieces.player1, ...pieces.player2];
+            const visited = new Set();
+            const groups = [];
+
+            for (const [x, y] of [...pieces.player1]) {
+                const k = key(x, y);
+                const groupVisited = new Set();
+                floodFill(x, y, groupVisited);
+
+                if (pieces.player2.some(([px, py]) => groupVisited.has(key(px, py)))) {
+                    return;
+                }
+            }
+            for (const [x, y] of [...pieces.player2]) {
+                const k = key(x, y);
+                const groupVisited = new Set();
+                floodFill(x, y, groupVisited);
+                if (pieces.player1.some(([px, py]) => groupVisited.has(key(px, py)))) {
+                    return;
+                }
+            }
+
+            gameStart = false;
+            if (myPlayer === 1) deleteDatabase();
+            if (player1_score > player2_score) alert("遊戲結束！紅色獲勝。");
+            else if (player2_score > player1_score) alert("遊戲結束！藍色獲勝。");
+            else alert("遊戲結束！雙方平手。");
+
         }
+
 
         window.restartGame = function () {
             pieces.player1 = [[1, 1], [5, 5]];
