@@ -154,7 +154,7 @@
             update,
             remove
         } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-database.js";
-        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-auth.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-auth.js";
         // TODO: Add SDKs for Firebase products that you want to use
         // https://firebase.google.com/docs/web/setup#available-libraries
 
@@ -212,13 +212,17 @@
             return urlParams.get('room');
         }
 
-        window.addEventListener('load', () => {
-            const roomId = getRoomFromURL();
-            if (roomId) {
-                roomCode = roomId;
-                joinRoom();
+        const roomID = getRoomFromURL();
+
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                if (roomID) {
+                    roomCode = roomID;
+                    joinRoom();
+                }
             }
         });
+
 
         document.getElementById('shareButton').addEventListener('click', async () => {
             const shareUrl = `${window.location.origin}${window.location.pathname}?room=${roomCode}`;
