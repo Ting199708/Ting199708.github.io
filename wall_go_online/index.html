@@ -218,7 +218,7 @@
             if (user) {
                 if (roomID) {
                     roomCode = roomID;
-                    joinRoom();
+                    autoJoinRoom();
                 }
             }
         });
@@ -354,6 +354,20 @@
 
         window.handleJoinRoom = async () => {
             roomCode = document.getElementById('roomInput').value.trim().toUpperCase();
+            const success = await joinRoom();
+            if (success) {
+                alert("成功加入房間！");
+                // 儲存 roomCode 並進入遊戲畫面
+                gameStart = true;
+                listenToGame();
+                document.getElementById("roomInfo").innerText = `房號：${roomCode}，已配對成功`;
+                document.getElementById("joinRoomDisplay").style.display = "none";
+                document.getElementById("createRoom").style.display = "none";
+                renderBoard();
+            }
+        }
+
+        async function autoJoinRoom() {
             const success = await joinRoom();
             if (success) {
                 alert("成功加入房間！");
