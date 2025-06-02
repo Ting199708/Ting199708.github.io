@@ -96,8 +96,9 @@
 </head>
 
 <body>
-    <h1>牆壁圍棋</h1>
+    <h1>牆壁圍棋線上版</h1>
     <div id="currentPlayerDisplay">目前玩家：玩家 1（紅）</div>
+    <button id="shareButton" style="display: none;">分享房間連結</button>
     <button id="createRoom" , onclick="handleCreateRoom()">建立房間</button>
     <div id="roomInfo"></div>
     <div id="joinRoomDisplay">
@@ -204,11 +205,45 @@
         let lastMoved = null;
         let wallPlacedPositions = new Set();
 
-        // let gameState = {
-        //     pieces: pieces,
-        //     walls, walls,
-        //     currentPlayer: currentPlayer
-        // };
+
+        // 自動加入房間
+        function getRoomFromURL() {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get('room');
+        }
+
+        window.addEventListener('load', () => {
+            const roomId = getRoomFromURL();
+            if (roomId) {
+                roomCode = roomId;
+                joinRoom();
+            }
+        });
+
+        document.getElementById('shareButton').addEventListener('click', async () => {
+            const shareUrl = `${window.location.origin}${window.location.pathname}?room=${roomCode}`;
+
+            if (navigator.share) {
+                try {
+                    await navigator.share({
+                        title: '牆壁圍棋對戰邀請',
+                        text: '加入我的遊戲房間，一起來玩吧！',
+                        url: shareUrl,
+                    });
+                    console.log('分享成功');
+                } catch (err) {
+                    console.error('使用者取消分享或發生錯誤:', err);
+                }
+            } else {
+                // 不支援 Web Share API，退而求其次複製連結
+                try {
+                    await navigator.clipboard.writeText(shareUrl);
+                } catch (err) {
+                    alert('瀏覽器不支援分享或複製功能');
+                }
+            }
+        });
+
 
         function generateRoomCode() {
             const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
@@ -256,9 +291,7 @@
             if (!data.player2) {
                 await update(roomRef, {
                     player2: "joined",
-                    players: {
-                        [uid]: true
-                    }
+                    [`players/${uid}`]: true
                 });
                 console.log("加入房間成功，為 player2");
                 myPlayer = 2;
@@ -308,6 +341,7 @@
             // const roomCode = await createRoom();
             await createRoom();
             // 儲存 roomCode 並進入遊戲畫面
+            document.getElementById("shareButton").style.display = "block";
             document.getElementById("roomInfo").innerText = `房號：${roomCode}，等待對手加入中...`;
             document.getElementById("joinRoomDisplay").style.display = "none";
             document.getElementById("createRoom").style.display = "none";
@@ -336,6 +370,7 @@
                 if (data && data.player2) {
                     alert("對手已加入，可以開始遊戲！");
                     document.getElementById("roomInfo").innerText = `房號：${roomCode}，已配對成功`;
+                    document.getElementById("shareButton").style.display = "none";
                     myPlayer = 1;
                     // 進入遊戲邏輯
                     gameStart = true;
@@ -721,6 +756,7 @@
             document.getElementById("noMove").style.display = "none";
             document.getElementById("roomInfo").innerText = "";
             document.getElementById("joinRoomDisplay").style.display = "block";
+            document.getElementById("roomInput").textContent = "";
             document.getElementById("createRoom").style.display = "block";
         }
 
