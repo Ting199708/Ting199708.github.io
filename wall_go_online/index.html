@@ -301,20 +301,67 @@
                 myPlayer = 2;
                 return true;
             } else {
-                alert("房間已滿！");
+                if (uid == data.host) {
+                    console.log("重新加入房間，為 player1");
+                    alert("重新加入房間！");
+                    myPlayer = 1;
+                    gameStart = true;
+                    const startListen = await syncStateWhenRejoin();
+                    renderBoard();
+                    if (startListen) {
+                        listenToGame();
+                    }
+                    document.getElementById("roomInfo").innerText = `房號：${roomCode}，已配對成功`;
+                    document.getElementById("joinRoomDisplay").style.display = "none";
+                    document.getElementById("createRoom").style.display = "none";
+                } else if (uid in data.players) {
+                    console.log("重新加入房間，為 player2");
+                    alert("重新加入房間！");
+                    myPlayer = 2;
+                    gameStart = true;
+                    const startListen = await syncStateWhenRejoin();
+                    renderBoard();
+                    if (startListen) {
+                        listenToGame();
+                    }
+                    document.getElementById("roomInfo").innerText = `房號：${roomCode}，已配對成功`;
+                    document.getElementById("joinRoomDisplay").style.display = "none";
+                    document.getElementById("createRoom").style.display = "none";
+                } else {
+                    alert("房間已滿！");
+                }
                 return false;
             }
         }
 
-        function listenToGame(callback) {
+        async function syncStateWhenRejoin() {
             const stateRef = ref(db, "rooms/" + roomCode + "/state");
-            console.log("開始監聽");
+            const state = await get(stateRef);
+
+            if (state.exists()) {
+                const stateVal = state.val();
+                updateGameStateToLocal(stateVal);
+                // return true means need to start listening
+                if (stateVal.currentPlayer != myPlayer) {
+                    currentPlayer = myPlayer;
+                    return false;
+                }
+                else {
+                    currentPlayer = (myPlayer === 1) ? 2 : 1;
+                    return true;
+                }
+            } else {
+                return true;
+            }
+        }
+
+        function listenToGame() {
+            const stateRef = ref(db, "rooms/" + roomCode + "/state");
             onValue(stateRef, (snapshot) => {
                 const state = snapshot.val();
                 if (state && state.currentPlayer != myPlayer) {
                     off(stateRef);
                     // 呼叫你的畫面更新邏輯
-                    // console.log(`接收到的state: `, JSON.stringify(state, null, 2));
                     updateGameStateToLocal(state);
                     renderBoard();
                 }
@@ -399,11 +446,6 @@
         }
 
         function updateServer() {
-            // if (currentPlayer == myPlayer) {
-            //     updateGameState();
-            // } else {
-            //     listenToGame();
-            // }
             updateGameState();
             listenToGame();
         }
@@ -583,7 +625,9 @@
             }
             initialPlaceStep = gameState.initialPlaceStep;
             if (initialPlaceStep >= 4) placingInitial = false;
-            currentPlayer = (currentPlayer === 1) ? 2 : 1;
+            if (gameState.currentPlayer != myPlayer) {
+                currentPlayer = (currentPlayer === 1) ? 2 : 1;
+            }
 
             const [player1_score, player2_score] = updateScores();
             checkGameOver(player1_score, player2_score);
@@ -757,6 +801,7 @@
 
 
         window.restartGame = function () {
+            if (myPlayer === 1) deleteDatabase();
             pieces.player1 = [[1, 1], [5, 5]];
             pieces.player2 = [[5, 1], [1, 5]];
             currentPlayer = 1;
