@@ -320,7 +320,7 @@
                     if (startListen) {
                         listenToGame();
                     }
-                    document.getElementById("roomInfo").innerText = `房號：${roomCode}，已配對成功`;
+                    document.getElementById("roomInfo").innerText = `房號：${roomCode}，你是玩家1 (紅)`;
                     document.getElementById("joinRoomDisplay").style.display = "none";
                     document.getElementById("createRoom").style.display = "none";
                 } else if (uid in data.players) {
@@ -333,7 +333,7 @@
                     if (startListen) {
                         listenToGame();
                     }
-                    document.getElementById("roomInfo").innerText = `房號：${roomCode}，已配對成功`;
+                    document.getElementById("roomInfo").innerText = `房號：${roomCode}，你是玩家2 (藍)`;
                     document.getElementById("joinRoomDisplay").style.display = "none";
                     document.getElementById("createRoom").style.display = "none";
                 } else {
@@ -416,7 +416,7 @@
                 // 儲存 roomCode 並進入遊戲畫面
                 gameStart = true;
                 listenToGame();
-                document.getElementById("roomInfo").innerText = `房號：${roomCode}，已配對成功`;
+                document.getElementById("roomInfo").innerText = `房號：${roomCode}，你是玩家2 (藍)`;
                 document.getElementById("joinRoomDisplay").style.display = "none";
                 document.getElementById("createRoom").style.display = "none";
                 renderBoard();
@@ -430,7 +430,7 @@
                 // 儲存 roomCode 並進入遊戲畫面
                 gameStart = true;
                 listenToGame();
-                document.getElementById("roomInfo").innerText = `房號：${roomCode}，已配對成功`;
+                document.getElementById("roomInfo").innerText = `房號：${roomCode}，你是玩家2 (藍)`;
                 document.getElementById("joinRoomDisplay").style.display = "none";
                 document.getElementById("createRoom").style.display = "none";
                 renderBoard();
@@ -443,7 +443,7 @@
                 const data = snapshot.val();
                 if (data && data.player2) {
                     alert("對手已加入，可以開始遊戲！");
-                    document.getElementById("roomInfo").innerText = `房號：${roomCode}，已配對成功`;
+                    document.getElementById("roomInfo").innerText = `房號：${roomCode}，你是玩家1 (紅)`;
                     document.getElementById("shareButton").style.display = "none";
                     myPlayer = 1;
                     // 進入遊戲邏輯
@@ -721,7 +721,9 @@
             }
             if (gameStart) {
                 if (placingInitial) {
-                    if (currentPlayer === myPlayer) currentPlayerDisplay.textContent = "請放置棋子";
+                    if (currentPlayer === myPlayer) {
+                        currentPlayerDisplay.textContent = (initialPlaceStep === 2) ? "請再放置一顆棋子" : "請放置棋子";
+                    }
                     else currentPlayerDisplay.textContent = "正在等待對手放置旗子"
                 } else {
                     if (currentPlayer === myPlayer) currentPlayerDisplay.textContent = "請移動棋子並放置牆壁";
@@ -841,6 +843,7 @@
             document.getElementById("joinRoomDisplay").style.display = "block";
             document.getElementById("roomInput").textContent = "";
             document.getElementById("createRoom").style.display = "block";
+            document.getElementById("shareButton").style.display = "none";
         }
 
         window.noMove = function () {
@@ -848,6 +851,7 @@
             movePiece(x, y, x, y);
             selectedPiece = null;
             lastMoved = [x, y];
+            possibleMoveCell.clear();
             renderBoard();
             document.getElementById("directionButtons").style.display = "block";
             document.getElementById("noMove").style.display = "none";
