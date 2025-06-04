@@ -374,9 +374,13 @@
                     board.appendChild(cell);
                 }
             }
-            currentPlayerDisplay.textContent = placingInitial
-                ? `請玩家 ${currentPlayer} 放置棋子`
-                : `目前玩家：玩家 ${currentPlayer}（${currentPlayer === 1 ? '紅' : '藍'}）`;
+            if (placingInitial) {
+                currentPlayerDisplay.textContent = (initialPlaceStep === 2) ?
+                    `請玩家 ${currentPlayer}  (${currentPlayer === 1 ? '紅' : '藍'}) 再放置一顆棋子` :
+                    `請玩家 ${currentPlayer}  (${currentPlayer === 1 ? '紅' : '藍'}) 放置棋子`;
+            } else {
+                currentPlayerDisplay.textContent = `請玩家 ${currentPlayer} (${currentPlayer === 1 ? '紅' : '藍'}) 移動棋子並放置牆壁`;
+            }
             return updateScores();
         }
 
@@ -464,18 +468,17 @@
         }
 
         function restartGame() {
-            pieces.player1 = [];
-            pieces.player2 = [];
-            initialPlacingIndex = 0;
-            currentPlayer = initialPlacement[0].player;
+            pieces.player1 = [[1, 1], [5, 5]];
+            pieces.player2 = [[5, 1], [1, 5]];
+            currentPlayer = 1;
             placingInitial = true;
+            initialPlaceStep = 0;
             selectedPiece = null;
             lastMoved = null;
             wallPlacedPositions.clear();
             possibleMoveCell.clear();
             for (const key in walls) delete walls[key];
             renderBoard();
-            currentPlayerDisplay.textContent = "目前玩家：玩家 1（紅）";
             scoreBoard.textContent = "";
             document.getElementById("directionButtons").style.display = "none";
             document.getElementById("noMove").style.display = "none";
@@ -486,6 +489,7 @@
             movePiece(x, y, x, y);
             selectedPiece = null;
             lastMoved = [x, y];
+            possibleMoveCell.clear();
             renderBoard();
             document.getElementById("directionButtons").style.display = "block";
             document.getElementById("noMove").style.display = "none";
@@ -498,7 +502,6 @@
             if (!placed) return;
             document.getElementById("directionButtons").style.display = "none";
             lastMoved = null;
-            possibleMoveCell.clear();
             currentPlayer = currentPlayer === 1 ? 2 : 1;
             const [player1_score, player2_score] = renderBoard();
             checkGameOver(player1_score, player2_score);
