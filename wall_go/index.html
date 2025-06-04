@@ -3,6 +3,7 @@
 
 <head>
     <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>牆壁圍棋</title>
     <style>
         body {
@@ -26,6 +27,14 @@
             background: #f0f0f0;
             border: 1px solid #999;
             position: relative;
+        }
+
+        .move-red {
+            background: #ff96fa;
+        }
+
+        .move-blue {
+            background: #96f5ff;
         }
 
         .piece {
@@ -112,6 +121,27 @@
     <div style="margin-top: 10px;">
         <button onclick="restartGame()">重新開始</button>
     </div>
+    <div id="rule" style="margin-top: 20px;">
+        <h3>遊戲規則</h3>
+        <h4>1. 放置棋子：</h4>
+        <p>
+            遊戲開始時玩家需要依序放置棋子，總共需要放置兩輪<br>
+            第一輪由玩家1 (紅色) 開始放置一顆，再換玩家2 (藍色) 放置<br>
+            第二輪由玩家2 (藍色) 先放再換玩家1 (紅色)
+        </p>
+        <h4>2. 移動棋子</h4>
+        <p>
+            玩家可選擇一顆自己的棋子移動0~2步<br>
+            移動完後可在移動後的格子上、下、左、右其中一個方向建立牆壁<br>
+            棋子不可穿越其他棋子或牆壁移動
+        </p>
+        <h4>3. 獲勝條件</h4>
+        <p>
+            當兩位玩家被區隔在獨立的領土時，遊戲結束<br>
+            玩家所佔領的方格數即為分數，分數高的玩家獲勝
+        </p>
+
+    </div>
     <script>
         const board = document.getElementById("board");
         const currentPlayerDisplay = document.getElementById("currentPlayerDisplay");
@@ -132,6 +162,7 @@
         let currentPlayer = 1;
         let lastMoved = null;
         let wallPlacedPositions = new Set();
+        let possibleMoveCell = new Set();
 
         function key(x, y) {
             return `${x},${y}`;
@@ -146,9 +177,8 @@
             const k2 = key(x2, y2);
 
             // 比較 k1 和 k2，用字典順序較小的放前面
-            return k1 < k2 ? `${k1}-${k2}` : `${k2}-${k1}`;
+            return k1 < k2 ? `[${k1}]-[${k2}]` : `[${k2}]-[${k1}]`;
         }
-
 
         function addWall(x, y, dir) {
             const k = key(x, y);
@@ -176,9 +206,12 @@
             return walls[k]?.has(dir);
         }
 
-        function createCell(x, y) {
+        function createCell(x, y, canMove) {
             const cell = document.createElement("div");
             cell.className = "cell";
+            if (canMove) {
+                cell.classList.add((currentPlayer === 1) ? "move-red" : "move-blue");
+            }
             cell.dataset.x = x;
             cell.dataset.y = y;
 
@@ -208,6 +241,7 @@
                         movePiece(px, py, x, y);
                         selectedPiece = null;
                         lastMoved = [x, y];
+                        possibleMoveCell.clear();
                         renderBoard();
                         document.getElementById("directionButtons").style.display = "block";
                         document.getElementById("noMove").style.display = "none";
@@ -255,11 +289,30 @@
             return false;
         }
 
+        function updatePossibleMove(piece) {
+            possibleMoveCell.clear();
+            for (let dx = -2; dx < 3; dx++) {
+                for (let dy = -2; dy < 3; dy++) {
+                    const nx = piece[0] + dx;
+                    const ny = piece[1] + dy;
+                    if (nx >= 0 && nx < size && ny >= 0 && ny < size &&
+                        isValidMove(piece[0], piece[1], nx, ny)) {
+                        possibleMoveCell.add(`${nx}-${ny}`);
+                    }
+                }
+            }
+        }
+
+
         function renderBoard() {
             board.innerHTML = "";
             for (let y = 0; y < size; y++) {
                 for (let x = 0; x < size; x++) {
-                    const cell = createCell(x, y);
+                    let move;
+                    if (possibleMoveCell.has(`${x}-${y}`)) move = true;
+                    else move = false;
+
+                    const cell = createCell(x, y, move);
                     const k = key(x, y);
 
                     for (const [px, py] of pieces.player1) {
@@ -271,19 +324,21 @@
                             }
                             piece.addEventListener("click", (e) => {
                                 e.stopPropagation();
+                                if (placingInitial) return;
                                 const owner = 1;
                                 if (owner === currentPlayer && !lastMoved) {
                                     document.getElementById("noMove").style.display = "block";
                                     selectedPiece = [x, y];
+                                    updatePossibleMove(selectedPiece);
                                     renderBoard();
                                 }
                             });
-                            // if (!placingInitial) piece.onclick = () => {
-                            //     if (currentPlayer === 1) {
-                            //         selectedPiece = [x, y];
-                            //         renderBoard();
-                            //     }
-                            // };
+                            if (!placingInitial) piece.onclick = () => {
+                                if (currentPlayer === 1) {
+                                    selectedPiece = [x, y];
+                                    renderBoard();
+                                }
+                            };
                             cell.appendChild(piece);
                         }
                     }
@@ -297,19 +352,21 @@
                             }
                             piece.addEventListener("click", (e) => {
                                 e.stopPropagation();
+                                if (placingInitial) return;
                                 const owner = 2;
                                 if (owner === currentPlayer && !lastMoved) {
                                     document.getElementById("noMove").style.display = "block";
                                     selectedPiece = [x, y];
+                                    updatePossibleMove(selectedPiece);
                                     renderBoard();
                                 }
                             });
-                            // if (!placingInitial) piece.onclick = () => {
-                            //     if (currentPlayer === 2) {
-                            //         selectedPiece = [x, y];
-                            //         renderBoard();
-                            //     }
-                            // };
+                            if (!placingInitial) piece.onclick = () => {
+                                if (currentPlayer === 2) {
+                                    selectedPiece = [x, y];
+                                    renderBoard();
+                                }
+                            };
                             cell.appendChild(piece);
                         }
                     }
@@ -377,44 +434,54 @@
             const visited = new Set();
             const groups = [];
 
-            for (const [px, py] of allPieces) {
-                const k = key(px, py);
-                if (!visited.has(k)) {
-                    const groupVisited = new Set();
-                    floodFill(px, py, groupVisited);
-                    groups.push([...groupVisited].filter(pos => allPieces.some(([gx, gy]) => key(gx, gy) === pos)));
-                    groupVisited.forEach(pos => visited.add(pos));
+            // if (placingInitial) return;
+
+
+            for (const [x, y] of [...pieces.player1]) {
+                const k = key(x, y);
+                const groupVisited = new Set();
+                floodFill(x, y, groupVisited);
+
+                if (pieces.player2.some(([px, py]) => groupVisited.has(key(px, py)))) {
+                    return;
+                }
+            }
+            for (const [x, y] of [...pieces.player2]) {
+                const k = key(x, y);
+                const groupVisited = new Set();
+                floodFill(x, y, groupVisited);
+                if (pieces.player1.some(([px, py]) => groupVisited.has(key(px, py)))) {
+                    return;
                 }
             }
 
-            const totalPieces = allPieces.length;
-            const totalGroupedPieces = groups.reduce((acc, g) => acc + g.length, 0);
+            gameStart = false;
+            if (myPlayer === 1) deleteDatabase();
+            if (player1_score > player2_score) alert("遊戲結束！紅色獲勝。");
+            else if (player2_score > player1_score) alert("遊戲結束！藍色獲勝。");
+            else alert("遊戲結束！雙方平手。");
 
-            if (groups.length === totalPieces && totalGroupedPieces === totalPieces) {
-                if (player1_score > player2_score) alert("遊戲結束！紅色獲勝。");
-                else if (player2_score > player1_score) alert("遊戲結束！藍色獲勝。");
-                else alert("遊戲結束！雙方平手。");
-            }
         }
 
         function restartGame() {
-            pieces.player1 = [[1, 1], [5, 5]];
-            pieces.player2 = [[5, 1], [1, 5]];
+            pieces.player1 = [];
+            pieces.player2 = [];
             initialPlacingIndex = 0;
-            currentPlayer = 1;
+            currentPlayer = initialPlacement[0].player;
             placingInitial = true;
-            initialPlaceStep = 0;
             selectedPiece = null;
             lastMoved = null;
             wallPlacedPositions.clear();
+            possibleMoveCell.clear();
             for (const key in walls) delete walls[key];
             renderBoard();
+            currentPlayerDisplay.textContent = "目前玩家：玩家 1（紅）";
             scoreBoard.textContent = "";
             document.getElementById("directionButtons").style.display = "none";
             document.getElementById("noMove").style.display = "none";
         }
 
-        function noMove() {
+        window.noMove = function () {
             const [x, y] = selectedPiece;
             movePiece(x, y, x, y);
             selectedPiece = null;
@@ -430,8 +497,8 @@
             const placed = addWall(x, y, dir);
             if (!placed) return;
             document.getElementById("directionButtons").style.display = "none";
-            document.getElementById("noMove").style.display = "none";
             lastMoved = null;
+            possibleMoveCell.clear();
             currentPlayer = currentPlayer === 1 ? 2 : 1;
             const [player1_score, player2_score] = renderBoard();
             checkGameOver(player1_score, player2_score);
