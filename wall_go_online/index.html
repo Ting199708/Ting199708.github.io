@@ -29,6 +29,14 @@
             position: relative;
         }
 
+        .move-red {
+            background: #ff96fa;
+        }
+
+        .move-blue {
+            background: #96f5ff;
+        }
+
         .piece {
             width: 30px;
             height: 30px;
@@ -204,6 +212,7 @@
         let myPlayer = 1;
         let lastMoved = null;
         let wallPlacedPositions = new Set();
+        let possibleMoveCell = new Set();
 
 
         // 自動加入房間
@@ -494,9 +503,12 @@
             return walls[k]?.has(dir);
         }
 
-        function createCell(x, y) {
+        function createCell(x, y, canMove) {
             const cell = document.createElement("div");
             cell.className = "cell";
+            if (canMove) {
+                cell.classList.add((currentPlayer === 1) ? "move-red" : "move-blue");
+            }
             cell.dataset.x = x;
             cell.dataset.y = y;
 
@@ -534,6 +546,7 @@
                         movePiece(px, py, x, y);
                         selectedPiece = null;
                         lastMoved = [x, y];
+                        possibleMoveCell.clear();
                         renderBoard();
                         document.getElementById("directionButtons").style.display = "block";
                         document.getElementById("noMove").style.display = "none";
@@ -633,12 +646,30 @@
             checkGameOver(player1_score, player2_score);
         }
 
+        function updatePossibleMove(piece) {
+            possibleMoveCell.clear();
+            for (let dx = -2; dx < 3; dx++) {
+                for (let dy = -2; dy < 3; dy++) {
+                    const nx = piece[0] + dx;
+                    const ny = piece[1] + dy;
+                    if (nx >= 0 && nx < size && ny >= 0 && ny < size &&
+                        isValidMove(piece[0], piece[1], nx, ny)) {
+                        possibleMoveCell.add(`${nx}-${ny}`);
+                    }
+                }
+            }
+        }
+
         function renderBoard() {
             console.log(`目前玩家: ${currentPlayer}`);
             board.innerHTML = "";
             for (let y = 0; y < size; y++) {
                 for (let x = 0; x < size; x++) {
-                    const cell = createCell(x, y);
+                    let move;
+                    if (possibleMoveCell.has(`${x}-${y}`)) move = true;
+                    else move = false;
+
+                    const cell = createCell(x, y, move);
                     const k = key(x, y);
 
                     for (const [px, py] of pieces.player1) {
@@ -650,21 +681,15 @@
                             }
                             piece.addEventListener("click", (e) => {
                                 e.stopPropagation();
-                                if (!gameStart) return;
-                                if (currentPlayer != myPlayer) return;
+                                if (!gameStart || placingInitial) return;
                                 const owner = 1;
                                 if (owner === currentPlayer && !lastMoved) {
                                     document.getElementById("noMove").style.display = "block";
                                     selectedPiece = [x, y];
+                                    updatePossibleMove(selectedPiece);
                                     renderBoard();
                                 }
                             });
-                            // if (!placingInitial) piece.onclick = () => {
-                            //     if (currentPlayer === 1) {
-                            //         selectedPiece = [x, y];
-                            //         renderBoard();
-                            //     }
-                            // };
                             cell.appendChild(piece);
                         }
                     }
@@ -678,21 +703,15 @@
                             }
                             piece.addEventListener("click", (e) => {
                                 e.stopPropagation();
-                                if (!gameStart) return;
-                                if (currentPlayer != myPlayer) return;
+                                if (!gameStart || placingInitial) return;
                                 const owner = 2;
                                 if (owner === currentPlayer && !lastMoved) {
                                     document.getElementById("noMove").style.display = "block";
                                     selectedPiece = [x, y];
+                                    updatePossibleMove(selectedPiece);
                                     renderBoard();
                                 }
                             });
-                            // if (!placingInitial) piece.onclick = () => {
-                            //     if (currentPlayer === 2) {
-                            //         selectedPiece = [x, y];
-                            //         renderBoard();
-                            //     }
-                            // };
                             cell.appendChild(piece);
                         }
                     }
@@ -811,6 +830,7 @@
             lastMoved = null;
             gameStart = false;
             wallPlacedPositions.clear();
+            possibleMoveCell.clear();
             roomCode = "";
             for (const key in walls) delete walls[key];
             renderBoard();
