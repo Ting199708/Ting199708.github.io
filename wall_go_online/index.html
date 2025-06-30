@@ -374,7 +374,8 @@
                     updateGameStateToLocal(state);
                     renderBoard();
                 }
-            })
+                if (gameStart == false) off(stateRef);
+            });
         }
 
         function updateGameState() {
@@ -405,7 +406,7 @@
             document.getElementById("roomInfo").innerText = `房號：${roomCode}，等待對手加入中...`;
             document.getElementById("joinRoomDisplay").style.display = "none";
             document.getElementById("createRoom").style.display = "none";
-            waitForOpponent()
+            waitForOpponent();
         }
 
         window.handleJoinRoom = async () => {
@@ -415,6 +416,7 @@
                 alert("成功加入房間！");
                 // 儲存 roomCode 並進入遊戲畫面
                 gameStart = true;
+                listenRestartRequest();
                 listenToGame();
                 document.getElementById("roomInfo").innerText = `房號：${roomCode}，你是玩家2 (藍)`;
                 document.getElementById("joinRoomDisplay").style.display = "none";
@@ -429,6 +431,7 @@
                 alert("成功加入房間！");
                 // 儲存 roomCode 並進入遊戲畫面
                 gameStart = true;
+                listenRestartRequest();
                 listenToGame();
                 document.getElementById("roomInfo").innerText = `房號：${roomCode}，你是玩家2 (藍)`;
                 document.getElementById("joinRoomDisplay").style.display = "none";
@@ -448,10 +451,56 @@
                     myPlayer = 1;
                     // 進入遊戲邏輯
                     gameStart = true;
+                    listenRestartRequest();
                     renderBoard();
                     off(roomRef); // 停止監聽
                 }
-            })
+            });
+        }
+
+        function listenRestartRequest() {
+            const roomRef = ref(db, `rooms/${roomCode}/restart`);
+
+            onValue(roomRef, (snapshot) => {
+                const data = snapshot.val();
+                if (data && data != myPlayer) {
+                    if (confirm("對手請求重新開始遊戲，是否接受?")) {
+                        const stateRef = ref(db, `rooms/${roomCode}`);
+                        update(stateRef, { restart_confirm: true });
+                        off(roomRef);
+                        restart();
+                    } else {
+                        const stateRef = ref(db, `rooms/${roomCode}`);
+                        update(stateRef, { restart_reject: true });
+                    }
+                }
+                if (gameStart == false) {
+                    off(roomRef);
+                }
+            });
+        }
+
+        function listenRestartConfirm() {
+            const roomRef = ref(db, "rooms/" + roomCode);
+
+            onValue(roomRef, (snapshot) => {
+                const data = snapshot.val();
+                if (data) {
+                    if (data.restart_confirm) {
+                        alert("對手已接受重新開始遊戲");
+                        off(roomRef);
+                        restart();
+                    } else if (data.restart_reject) {
+                        alert("對手已拒絕重新開始遊戲");
+                        off(roomRef);
+                        remove(ref(db, `rooms/${roomCode}/restart`));
+                        remove(ref(db, `rooms/${roomCode}/restart_reject`));
+                    }
+                }
+                if (gameStart == false) {
+                    off(roomRef);
+                }
+            });
         }
 
         function updateServer() {
@@ -476,12 +525,24 @@
             return k1 < k2 ? `[${k1}]-[${k2}]` : `[${k2}]-[${k1}]`;
         }
 
+        function isBoundary(x, y, dir) {
+            const dx = { left: -1, right: 1, top: 0, bottom: 0 }[dir];
+            const dy = { left: 0, right: 0, top: -1, bottom: 1 }[dir];
+            const x2 = x + dx;
+            const y2 = y + dy;
+            return (x2 < 0) || (y2 < 0) || (x2 >= size) || (y2 >= size);
+        }
+
 
         function addWall(x, y, dir) {
             const k = key(x, y);
             const uniqueWallKey = getNormalizedWallKey(x, y, dir);
             if (wallPlacedPositions.has(uniqueWallKey)) {
                 alert("這裡已經放過牆壁了！");
+                return false;
+            }
+            if (isBoundary(x, y, dir)) {
+                alert("邊界不能放牆壁！");
                 return false;
             }
             wallPlacedPositions.add(uniqueWallKey);
@@ -683,7 +744,7 @@
                                 e.stopPropagation();
                                 if (!gameStart || placingInitial) return;
                                 const owner = 1;
-                                if (owner === currentPlayer && !lastMoved) {
+                                if (currentPlayer === owner && !lastMoved && currentPlayer === myPlayer) {
                                     document.getElementById("noMove").style.display = "block";
                                     selectedPiece = [x, y];
                                     updatePossibleMove(selectedPiece);
@@ -705,7 +766,7 @@
                                 e.stopPropagation();
                                 if (!gameStart || placingInitial) return;
                                 const owner = 2;
-                                if (owner === currentPlayer && !lastMoved) {
+                                if (currentPlayer === owner && !lastMoved && currentPlayer === myPlayer) {
                                     document.getElementById("noMove").style.display = "block";
                                     selectedPiece = [x, y];
                                     updatePossibleMove(selectedPiece);
@@ -820,8 +881,7 @@
 
         }
 
-
-        window.restartGame = function () {
+        function restart() {
             if (myPlayer === 1) deleteDatabase();
             pieces.player1 = [[1, 1], [5, 5]];
             pieces.player2 = [[5, 1], [1, 5]];
@@ -841,9 +901,16 @@
             document.getElementById("noMove").style.display = "none";
             document.getElementById("roomInfo").innerText = "";
             document.getElementById("joinRoomDisplay").style.display = "block";
-            document.getElementById("roomInput").textContent = "";
+            document.getElementById("roomInput").value = "";
             document.getElementById("createRoom").style.display = "block";
             document.getElementById("shareButton").style.display = "none";
+        }
+
+
+        window.restartGame = function () {
+            const roomRef = ref(db, `rooms/${roomCode}`);
+            update(roomRef, { restart: myPlayer });
+            listenRestartConfirm();
         }
 
         window.noMove = function () {
