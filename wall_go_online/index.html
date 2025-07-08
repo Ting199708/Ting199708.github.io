@@ -37,6 +37,10 @@
             background: #96f5ff;
         }
 
+        .flash {
+            background-color: yellow;
+        }
+
         .piece {
             width: 30px;
             height: 30px;
@@ -373,6 +377,9 @@
                     // 呼叫你的畫面更新邏輯
                     updateGameStateToLocal(state);
                     renderBoard();
+                    if (navigator.vibrate) {
+                        navigator.vibrate([200, 100, 200]); // 震兩下
+                    }
                 }
                 if (gameStart == false) off(stateRef);
             });
@@ -784,11 +791,21 @@
                 if (placingInitial) {
                     if (currentPlayer === myPlayer) {
                         currentPlayerDisplay.textContent = (initialPlaceStep === 2) ? "請再放置一顆棋子" : "請放置棋子";
+                        currentPlayerDisplay.classList.add("flash");
                     }
-                    else currentPlayerDisplay.textContent = "正在等待對手放置旗子"
+                    else {
+                        currentPlayerDisplay.textContent = "正在等待對手放置旗子"
+                        currentPlayerDisplay.classList.remove("flash");
+                    }
                 } else {
-                    if (currentPlayer === myPlayer) currentPlayerDisplay.textContent = "請移動棋子並放置牆壁";
-                    else currentPlayerDisplay.textContent = "正在等待對手移動棋子並放置牆壁";
+                    if (currentPlayer === myPlayer) {
+                        currentPlayerDisplay.textContent = "請移動棋子並放置牆壁";
+                        currentPlayerDisplay.classList.add("flash");
+                    }
+                    else {
+                        currentPlayerDisplay.textContent = "正在等待對手移動棋子並放置牆壁";
+                        currentPlayerDisplay.classList.remove("flash");
+                    }
                 }
             } else {
                 currentPlayerDisplay.textContent = "請建立或加入房間";
@@ -939,6 +956,16 @@
         };
 
         renderBoard();
+
+        setInterval(() => {
+            if (gameStart && currentPlayer === myPlayer) {
+                currentPlayerDisplay.classList.remove("flash");
+            }
+
+            setTimeout(() => {
+                currentPlayerDisplay.classList.add("flash");
+            }, 200);
+        }, 5000);
     </script>
 </body>
 
