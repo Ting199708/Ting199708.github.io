@@ -109,11 +109,11 @@
 
 <body>
     <h1>牆壁圍棋線上版</h1>
-    <div id="currentPlayerDisplay">目前玩家：玩家 1（紅）</div>
+    <div id="currentPlayerDisplay" style="font-size: large;"></div>
     <button id="shareButton" style="display: none;">分享房間連結</button>
     <button id="createRoom" , onclick="handleCreateRoom()">建立房間</button>
     <div id="roomInfo"></div>
-    <div id="joinRoomDisplay">
+    <div id="joinRoomDisplay" style="padding-bottom: 3px;">
         <input id="roomInput" placeholder="輸入房號">
         <button onclick="handleJoinRoom()">加入房間</button>
     </div>
@@ -377,9 +377,6 @@
                     // 呼叫你的畫面更新邏輯
                     updateGameStateToLocal(state);
                     renderBoard();
-                    if (navigator.vibrate) {
-                        navigator.vibrate([200, 100, 200]); // 震兩下
-                    }
                 }
                 if (gameStart == false) off(stateRef);
             });
@@ -960,11 +957,10 @@
         setInterval(() => {
             if (gameStart && currentPlayer === myPlayer) {
                 currentPlayerDisplay.classList.remove("flash");
+                setTimeout(() => {
+                    currentPlayerDisplay.classList.add("flash");
+                }, 200);
             }
-
-            setTimeout(() => {
-                currentPlayerDisplay.classList.add("flash");
-            }, 200);
         }, 5000);
     </script>
 </body>
